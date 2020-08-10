@@ -8,10 +8,10 @@
       <!-- 登录表单 -->
       <el-form ref="loginFormRef" :model="loginForm" :rules="loginFormRules" label-width="0" class="login_form">
         <el-form-item prop="username">
-          <el-input v-model="loginForm.username" prefix-icon="iconfont icon-user"></el-input>
+          <el-input v-model="loginForm.username" prefix-icon="iconfont icon-user" placeholder="请输入账号"></el-input>
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="loginForm.password" type="password" prefix-icon="iconfont icon-3702mima"></el-input>
+          <el-input v-model="loginForm.password" type="password" prefix-icon="iconfont icon-3702mima" placeholder="请输入密码"></el-input>
         </el-form-item>
         <el-form-item class="btns">
           <el-button type="primary" @click="login">登录</el-button>
@@ -28,8 +28,8 @@ export default {
   data(){
     return{
       loginForm:{
-        username:'',
-        password:''
+        username:'admin',
+        password:'123456'
       },
       // 表单验证规则
       loginFormRules:{
@@ -54,7 +54,6 @@ export default {
         const {data:res}=await this.$http.post('login',this.loginForm)
         if(res.meta.status!==200)return this.$message.error('登陆失败！')
         this.$message.success('登陆成功')
-
         // 保存token
         window.sessionStorage.setItem("token",res.data.token)
         // 跳转到home页面
@@ -80,7 +79,6 @@ export default {
   left: 50%;
   transform: translate(-50%, -50%);
 }
-
 .avatar_box {
   height: 130px;
   width: 130px;
