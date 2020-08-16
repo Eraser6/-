@@ -2,12 +2,10 @@ export const showDataMixin={
 
   methods:{
     // 展示数据
-    showData(res,message) {
+    showError(res,message) {
       if (res.meta.status !== 200) {
         return this.$message.error(message);
       }
-      // this.$message.success("添加用户成功");
-
     },
 
     // 获取用户数据列表

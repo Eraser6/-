@@ -1,8 +1,14 @@
 <template>
   <div>
-    <el-card>
+    <bread-crumb>
+      <span slot="left">首页</span>
+      <span slot="center">用户管理</span>
+      <span slot="right">用户列表</span>
+    </bread-crumb>
+
+    <card>
       <!-- 搜索与添加 -->
-      <el-row :gutter="20">
+      <el-row :gutter="20" slot="add">
         <el-col :span="8">
           <el-input
             placeholder="请输入内容"
@@ -22,7 +28,7 @@
       </el-row>
 
       <!-- 用户列表 -->
-      <el-table :data="userlist" border stripe>
+      <el-table :data="userlist" border stripe slot="content">
         <el-table-column type="index"></el-table-column>
         <el-table-column label="姓名" prop="username"></el-table-column>
         <el-table-column label="邮箱" prop="email"></el-table-column>
@@ -51,7 +57,12 @@
             ></el-button>
             <!-- 分配角色 -->
             <el-tooltip effect="dark" content="分配角色" :enterable="false" placement="top">
-              <el-button type="warning" icon="el-icon-setting" size="mini"></el-button>
+              <el-button
+                type="warning"
+                icon="el-icon-setting"
+                size="mini"
+                @click="setRole(scope.row)"
+              ></el-button>
             </el-tooltip>
           </template>
         </el-table-column>
@@ -66,8 +77,9 @@
         :page-size="queryInfo.pagesize"
         layout="total, sizes, prev, pager, next, jumper"
         :total="total"
+        slot="pagination"
       ></el-pagination>
-    </el-card>
+    </card>
 
     <!-- 添加用户的对话框 -->
     <el-dialog title="添加用户" :visible.sync="addDialogVisible" width="50%" @close="addDialogClosed">
@@ -109,14 +121,49 @@
         <el-button type="primary" @click="editUserInfo">确 定</el-button>
       </span>
     </el-dialog>
+
+    <!-- 分配角色的对话框 -->
+    <el-dialog
+      title="修改用户"
+      :visible.sync="setRoleDialogVisible"
+      width="50%"
+      @close="setRoleDialogClosed"
+    >
+      <div>
+        <p>当前的用户：{{userInfo.username}}</p>
+        <p>当前的角色：{{userInfo.role_name}}</p>
+        <p>
+          分配的新角色：
+          <el-select v-model="selectdRoleId" placeholder="请选择">
+            <el-option
+              v-for="item in rolesList"
+              :key="item.id"
+              :label="item.roleName"
+              :value="item.id"
+            ></el-option>
+          </el-select>
+        </p>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="setRoleDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="saveRoleInfo">确 定</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { showDataMixin } from "common/mixin";
+import Card from "components/Card";
+import BreadCrumb from "components/BreadCrumb";
+
 export default {
-  name: "Card",
+  name: "Users",
   mixins: [showDataMixin],
+  components: {
+    Card,
+    BreadCrumb,
+  },
   data() {
     let checkEmail = (rule, value, cb) => {
       const regEmail = /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+(\.[a-zA-Z0-9_-])+/;
@@ -137,9 +184,13 @@ export default {
         pagesize: 2,
       },
       userlist: [],
+      userInfo: {},
+      rolesList: [],
       total: 0,
+      selectdRoleId:'',
       addDialogVisible: false,
       editDialogVisible: false,
+      setRoleDialogVisible: false,
       editForm: {},
       addForm: {
         username: "",
@@ -194,7 +245,7 @@ export default {
     // 监听pagesize改变
     handleSizeChange(newSize) {
       console.log(newSize);
-      this.queryInfo.pagesize=newSize;
+      this.queryInfo.pagesize = newSize;
       this.getUserList();
     },
     // 监听页码改变
@@ -203,6 +254,7 @@ export default {
       this.queryInfo.pagenum = newPage;
       this.getUserList();
     },
+
     // 监听用户状态改变
     async userStateChanged(userinfo) {
       console.log(userinfo);
@@ -215,19 +267,14 @@ export default {
       }
       this.$message.success("更新用户状态成功");
     },
-    // 编辑用户
-    async showEditDialog(id) {
-      this.editDialogVisible = true;
-      const { data: res } = await this.$http.get("users/" + id);
-      const message = "查询用户信息失败";
-      this.showData(res, this.editForm, message);
-      this.editForm = res.data;
-      console.log(this.editForm);
-    },
+
+    // -----添加-----
+
     // 监听添加对话框关闭
     addDialogClosed() {
       this.$refs.addFormRef.resetFields();
     },
+
     // 点击添加新用户
     addUser() {
       this.$refs.addFormRef.validate(async (valid) => {
@@ -242,10 +289,24 @@ export default {
         this.getUserList();
       });
     },
+
+    // -----编辑-----
+
     // 监听修改对话框关闭
     editDialogClosed() {
       this.$refs.editFormRef.resetFields();
     },
+
+    // 编辑用户
+    async showEditDialog(id) {
+      this.editDialogVisible = true;
+      const { data: res } = await this.$http.get("users/" + id);
+      const message = "查询用户信息失败";
+      this.showError(res, message);
+      this.editForm = res.data;
+      console.log(this.editForm);
+    },
+
     // 修改用户信息并提交
     editUserInfo() {
       this.$refs.editFormRef.validate(async (valid) => {
@@ -259,12 +320,48 @@ export default {
           }
         );
         const message = "更新用户信息失败！";
-        this.showData(res, this.editForm, message);
+        this.showError(res, message);
         this.editDialogVisible = false;
         this.getUserList();
         this.$message.success("更新用户信息成功");
       });
     },
+
+    // 展示分配角色对话框
+    async setRole(userInfo) {
+      this.userInfo = userInfo;
+      const { data: res } = await this.$http.get("roles");
+      const message = "获取角色列表失败";
+      this.showError(res, message);
+      this.rolesList = res.data;
+      console.log(this.rolesList);
+      this.setRoleDialogVisible = true;
+    },
+
+    // 分配角色
+    async saveRoleInfo(){
+      if(!this.selectdRoleId){
+        return this.$message.error('请选择要分配的角色！')
+      }
+
+      const {data:res} = await this.$http.put(`users/${this.userInfo.id}/role`,{
+        rid:this.selectdRoleId
+      })
+
+      this.showError(res,'更新角色失败！')
+      this.$message.success('更新角色成功！')
+      this.getUserList()
+      this.setRoleDialogVisible=false
+    },
+
+    // 监听分配框关闭
+    setRoleDialogClosed(){
+      this.selectdRoleId=''
+      this.userInfo={}
+    },
+
+    // -----删除-----
+
     // 根据id删除信息
     async removeUserById(id) {
       const confirmResult = await this.$confirm(
