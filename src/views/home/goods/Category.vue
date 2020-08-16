@@ -1,0 +1,241 @@
+<template>
+  <div>
+    <bread-crumb>
+      <span slot="left">首页</span>
+      <span slot="center">商品管理</span>
+      <span slot="right">商品分类</span>
+    </bread-crumb>
+
+    <card>
+      <!-- 首部 -->
+      <el-row slot="add">
+        <el-col>
+          <el-button type="primary" @click="showAddCateDialog">添加分类</el-button>
+        </el-col>
+      </el-row>
+
+      <!-- 表格 -->
+      <tree-table
+        slot="content"
+        :data="catelist"
+        :columns="columns"
+        :selection-type="false"
+        :expand-type="false"
+        show-index
+        border
+        :show-row-hover="false"
+        index-text
+        class="treeTable"
+      >
+        <!-- 是否有效 -->
+        <template v-slot:isok="scope">
+          <i class="el-icon-success" v-if="scope.row.cat_deleted===false" style="color:lightgreen"></i>
+          <i class="el-icon-error" v-else></i>
+        </template>
+        <!-- 排序 -->
+        <template v-slot:order="scope">
+          <el-tag size="mini" v-if="scope.row.cat_level===0">一级</el-tag>
+          <el-tag size="mini" v-else-if="scope.row.cat_level===1" type="success">二级</el-tag>
+          <el-tag size="mini" v-else type="warning">三级</el-tag>
+        </template>
+        <!-- 操作 -->
+        <template v-slot:option="scope">
+          <el-button icon="el-icon-edit" type="primary" size="mini">编辑</el-button>
+          <el-button icon="el-icon-delete" type="danger" size="mini">删除</el-button>
+        </template>
+      </tree-table>
+
+      <!-- 分页 -->
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="queryInfo.pagenum"
+        :page-sizes="[1, 2, 5, 10]"
+        :page-size="queryInfo.pagesize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+        slot="pagination"
+      ></el-pagination>
+    </card>
+
+    <!-- 添加分类对话框 -->
+    <el-dialog
+      title="添加分类"
+      :visible.sync="addCateDialogVisible"
+      width="50%"
+      @close="addCateDialogClosed"
+    >
+      <el-form
+        :model="addCateForm"
+        :rules="addCateFormRules"
+        ref="addCateFormRef"
+        label-width="70px"
+      >
+        <el-form-item label="分类名称" prop="cat_name">
+          <el-input v-model="addCateForm.cat_name"></el-input>
+        </el-form-item>
+        <el-form-item label="父级分类">
+          <el-cascader
+            v-model="selectedKeys"
+            :options="parentCateList"
+            :props="cascaderProps"
+            @change="parentCateChanged"
+            clearable
+            change-on-select
+          ></el-cascader>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="addCateDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="addCate">确 定</el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+import BreadCrumb from "components/BreadCrumb";
+import Card from "components/Card";
+import { showDataMixin } from "common/mixin";
+
+export default {
+  name: "Category",
+  mixins: [showDataMixin],
+  components: {
+    BreadCrumb,
+    Card,
+  },
+  created() {
+    this.getCateList();
+  },
+  data() {
+    return {
+      queryInfo: {
+        type: 3,
+        pagenum: 1,
+        pagesize: 5,
+      },
+      catelist: [],
+      total: 0,
+      // 父级分类数据
+      parentCateList: [],
+      cascaderProps: {
+        value: "cat_id",
+        label: "cat_name",
+        children: "children",
+        expandTrigger: "hover",
+      },
+      // 选中的父级分类的Id数组
+      selectedKeys: [],
+      columns: [
+        {
+          label: "分类名称",
+          prop: "cat_name",
+        },
+        {
+          label: "是否有效",
+          type: "template",
+          template: "isok",
+        },
+        {
+          label: "排序",
+          type: "template",
+          template: "order",
+        },
+        {
+          label: "操作",
+          type: "template",
+          template: "option",
+        },
+      ],
+      addCateDialogVisible: false,
+      addCateForm: {
+        cat_name: "",
+        cat_pid: 0,
+        cat_level: 0,
+      },
+      addCateFormRules: {
+        cat_name: [{ required: true, message: "分类名称", trigger: "blur" }],
+      },
+    };
+  },
+  methods: {
+    // -----分页-----
+    handleSizeChange(newSize) {
+      this.queryInfo.pagesize = newSize;
+      this.getCateList();
+    },
+
+    handleCurrentChange(newPage) {
+      this.queryInfo.pagenum = newPage;
+      this.getCateList();
+    },
+
+    // -----添加-----
+
+    // 展示添加分类框
+    showAddCateDialog() {
+      this.getParentCateList();
+      this.addCateDialogVisible = true;
+    },
+
+    addCateDialogClosed() {
+      this.$refs.addCateFormRef.resetFields();
+      this.selectedKeys = [];
+      this.addCateForm.cat_level = 0;
+      this.addCateForm.pid = 0;
+    },
+
+    // 获取父级分类的数据列表
+    async getParentCateList() {
+      const { data: res } = await this.$http.get("categories", {
+        type: 2,
+      });
+      this.showError(res, "获取父级分类数据失败！");
+      this.parentCateList = res.data;
+    },
+
+    // 选择项发生变化
+    parentCateChanged() {
+      console.log(this.selectedKeys);
+      if (this.selectedKeys.length > 0) {
+        this.addCateForm.cat_pid = this.selectedKeys[
+          this.selectedKeys.length - 1
+        ];
+        this.addCateForm.cat_level = this.selectedKeys.length
+        console.log(this.addCateForm.cat_level);
+        return;
+      } else {
+        this.addCateForm.cat_pid = 0;
+        this.addCateForm.cat_level = 0;
+      }
+    },
+
+    // 点击确定，添加新分类
+    addCate() {
+      this.$refs.addCateFormRef.validate(async (valid) => {
+        if (!valid) return;
+        const { data: res } = await this.$http.post("categories",this.addCateForm);
+        if(res.meta.status!==201){
+          return this.$message.error('添加分类失败')
+        }
+        this.$message.success('添加分类成功')
+        this.getCateList();
+        this.addCateDialogVisible=false
+        console.log(this.addCateForm);
+        console.log(this.selectedKeys);
+      });
+    },
+  },
+};
+</script>
+
+<style scoped>
+.treeTable {
+  margin-top: 15px;
+}
+
+.el-cascader {
+  width: 100%;
+}
+</style>

@@ -26,3 +26,7 @@ html,body,#app{
 .el-form-item__label{
   font-size: 12px!important;
 }
+
+.el-cascader-menu{
+  height:300px
+}
