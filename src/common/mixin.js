@@ -58,5 +58,16 @@ export const showDataMixin={
         this.onlyTableData = res.data;
       }
     },
+
+    // 获取商品信息
+    async getGoodsList() {
+      const { data: res } = await this.$http.get("goods", {
+        params: this.queryInfo,
+      });
+      this.total = res.data.total;
+      this.goodslist = res.data.goods;
+      this.showError(res, "展示商品列表数据失败");
+      console.log(res.data);
+    },
   }
 }
