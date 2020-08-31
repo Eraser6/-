@@ -9,6 +9,7 @@ import Category from 'views/home/goods/Category'
 import Params from 'views/home/goods/Params'
 import Goods from 'views/home/goods/Goods'
 import Add from 'views/home/goods/Add'
+import Order from 'views/home/order/Order'
 
 Vue.use(VueRouter)
 
@@ -32,7 +33,8 @@ const routes = [
       {path:'/categories',component:Category},
       {path:'/params',component:Params},
       {path:'/goods',component:Goods},
-      {path:'/goods/add',component:Add}
+      {path:'/goods/add',component:Add},
+      {path:'/orders',component:Order},
     ]
   }
 ]
